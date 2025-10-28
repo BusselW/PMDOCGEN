@@ -6,15 +6,11 @@ const { createElement: h } = React;
 
 /**
  * Dit object bevat de standaardteksten die gekoppeld zijn aan de vinkjes
- * voor de specifieke "Verkeersboete.nl" workflow.
+ * voor de specifieke "Skandara" workflow.
  */
 export const SkandaraTeksten = {
-    nietVoldaanKader: {
-        label: "Niet voldaan aan vereiste beoordelingskader",
-        tekst: "Niet voldaan aan vereiste beoordelingskader: betrokkene ontkent de gedraging te hebben verricht en is van oordeel dat niet is voldaan aan één of meerdere vereisten uit het beoordelingskader digitale handhaving en gesloten verklaringen. (Hierna het beoordelingskader.) Indien een gemeente digitaal wilt handhaven op categorie G of C borden gelden strikte vereisten. Deze vereisten staan vermeld in het beoordelingskader. Het Hof doet indringend aan het kader en wel per voorwaarde. Zie het arrest van 01-09-2022 ECLI:NL:GHARL:2022:7566. Uit het dossier volgt bijvoorbeeld weggebruikers onvoldoende worden gewaarschuwd middels vooraankondigingsborden. Het gevolg is dat ze in een fuik zijn gereden."
-    },
     onvoldoendeOndervangen: {
-        label: "onvoldoende ondervangen",
+        label: "Beleidskader, althans niet gehouden aan eisen bebording.",
         tekst: "Onvoldoende ondervangen: Het beoordelingskader geeft nadere vereisten aan de wijze waarop de gedraging moet worden vastgesteld. De beleidsregels bepalen onder meer dat het bord zichtbaar moet zijn op de foto. Op de foto zie ik geen C of G bord en dat is in strijd met de beleidsregels. De vraag is of het een of ander op andere wijze is ondervangen. Daarvan blijkt niet, althans niet voldoende uit het dossier."
     },
     geenInstemmingOM: {
@@ -25,21 +21,33 @@ export const SkandaraTeksten = {
         label: "Geen waarschuwingsbrieven ontvangen.",
         tekst: "Geen waarschuwingsbrieven ontvangen: Betrokkene heeft verklaard dat hij nimmer een waarschuwingsbrief heeft ontvangen door de instantie . In het arrest van het Hof Arnhem/Leeuwarden d.d. 07-12-2022 ECLI:NL:GHARL:2022:10521. Kan worden afgeleid dat wanneer in een zaak waarin het beoordelingskader van toepassing is en betrokkene geen waarschuwingsbrief heeft ontvangen, dat de gevolgtrekking van vernietiging van de inleidende beschikking dient te worden gemaakt. Ik ben van oordeel dat ook nu het beoordelingskader van toepassing is. De regel omtrent het waarschuwen eerste overtreders van toepassing moet zijn."
     },
-    onvoldoendeSignalering: {
-        label: "Onvoldoende signalerende werking.",
-        tekst: "Onvoldoende signalerende werking: De bebording aldaar heeft dusdanig onvoldoende signalerende werking dat weggebruikers als gevolg daarvan niet, althans onvoldoende op de hoogte worden gebracht van het verkeersregime."
+    beleidskadersNietInAchtGenomen: {
+        label: "Beleidsregels digitale handhaving/bebording niet in acht genomen.",
+        tekst: "Betrokkene betwist de gedraging. In casu is sprake van digitale handhaving. Betrokkene bestrijdt dat de daarvoor geldende beleidsregels in acht zijn genomen, in ieder geval niet ten aanzien van de bebording. Nu uit het dossier niet, althans onvoldoende, is gebleken dat de BOA heeft gehandeld conform de geldende beleidskaders. Dit volgt uit de Regeling Buitengewoon Opsporingsambtenaren en Digitale Handhaving, Voetgangers en Gesloten Verklaringen. Mocht de BOA geen gebruik hebben mogen maken van zijn bevoegdheid tot het opleggen van de sanctie (1 september 2022, ECLI:NL:GHARL:2022:7566), dan kan de sanctiebeschikking niet in stand blijven."
     },
-    onjuisteBebording: {
-        label: "onjuiste bebording.",
-        tekst: "Betrokkene betwist dat de juiste bebording is geplaatst. Uit het dossier blijkt niet dat kort voor aanvang van de gedraging de bebording is gecontroleerd. Nu de aanwezigheid van de vermeende bebording cruciaal is om de gedraging vast te kunnen stellen, ligt het op de weg van de officier van justitie om informatie te verstrekken waaruit blijkt dat vlak voor en na de vermeende pleegdatum de bebording in orde was."
+    tegenstrijdigeBebordingLijnbus: {
+        label: "Tegenstrijdige bebording (lijnbus wel toegestaan).",
+        tekst: "Betrokkene wordt verweten te hebben gehandeld in strijd met een geslotenverklaring voor alle motorvoertuigen. Deze gedraging kan echter op basis van de beschikbare gegevens niet worden vastgesteld. Lijnbussen zijn wel toegestaan op de pleeglocatie, terwijl een lijnbus ook een motorvoertuig is. Derhalve kan de verweten gedraging — dat ter plaatse geen motorvoertuigen mochten inrijden — niet worden vastgesteld. Betrokkene concludeert tot vernietiging van de sanctiebeschikking."
     },
-    gedragingNietVastTeStellen: {
-        label: "gedraging niet vast te stellen.",
-        tekst: "Gedraging niet vast te stellen. Betrokkene is van oordeel dat de gedraging niet is vast te stellen op basis van de beschikbare gegevens. De gedraging kan niet worden vastgesteld. De inleidende beschikking komt voor vernietiging in aanmerking."
+    verkeerdeFeitcodeR311A: {
+        label: "Verkeerde feitcode toegepast (R311A voor bromfiets).",
+        tekst: "Betrokkene betwist de gedraging. Verbalisant heeft de verkeerde feitcode toegepast. Feitcode R311A moet worden toegepast, omdat betrokkene reed op een bromfiets. Subsidiair verzoekt betrokkene om de feitcode te wijzigen en primair verzoekt betrokkene om de sanctie te vernietigen."
     },
-    onterechtNietStaandeGehouden: {
-        label: "onterecht niet staande gehouden.",
-        tekst: "Indien een reële mogelijkheid bestaat om betrokkene staande te houden dan mag daarvan niet worden afgeweken. Zie art. 5 WAHV. Verbalisant dient zich zo mogelijk ervan te vergewissen dat degene die de overtreding begaat ook de bestuurder is. Voor zover de verbalisant aanstonds kan vaststellen wie de gedraging heeft verricht zou hij de bestuurder moeten staande houden. Schending van art. 5 WAHV rechtvaardigt vernietiging van de inleidende beschikking."
+    onduidelijkeVooraankondiging: {
+        label: "Vooraankondigingsborden onvoldoende duidelijk.",
+        tekst: "De vooraankondigingsborden zijn niet duidelijk genoeg. Betrokkene stond al voor de geslotenverklaring. Voordat betrokkene het wist, kon hij niet meer keren en handelde hij in strijd met de verklaring. De borden moeten duidelijker zijn en op een plaats staan waar bestuurders nog de kans hebben een andere route te kiezen. Dat is hier niet het geval en is in strijd met het beleidskader."
+    },
+    onterechteGeenStaandehouding: {
+        label: "Onterecht niet staande gehouden (mogelijkheid was er).",
+        tekst: "Vast staat dat er geen staandehouding heeft plaatsgevonden en dat de verbalisant langs de kant van de weg is gaan staan om overtreders te bekeuren. Uit het dossier volgt niet op welke wijze de controle zodanig was ingericht dat staandehouding niet mogelijk was. Bij die stand van zaken kan de beschikking niet in stand blijven. Wij verwijzen naar een uitspraak van het Hof Arnhem-Leeuwarden van 8 februari 2022, ECLI:NL:GHARL:2022:1534."
+    },
+    verkeerdeFeitcodeR611AEnGeenStaandehouding: {
+        label: "Verkeerde feitcode (R611A) en geen staandehouding.",
+        tekst: "Betrokkene betwist de gedraging. Verbalisant heeft de verkeerde feitcode toegepast. Feitcode R611A had toegepast moeten worden. Verbalisant had ook een staandehouding moeten verrichten. Verbalisant had een andere verbalisant kunnen inroepen om een staandehouding te verrichten. Betrokkene concludeert tot vernietiging van de sanctiebeschikking."
+    },
+    ontbrekendeSchouwrapporten: {
+        label: "Schouwrapporten ontbreken in dossier.",
+        tekst: "Betrokkene betwist de gedraging. In het dossier zitten geen schouwrapporten. Nu de schouwrapporten ontbreken, komt de deugdelijkheid onvoldoende vast te staan. Betrokkene concludeert tot vernietiging van de sanctiebeschikking."
     }
 };
 
