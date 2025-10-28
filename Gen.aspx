@@ -77,7 +77,22 @@
         import { tutorialSteps } from './util/tutorial.js';
         import { VerkeersboeteTeksten, VerkeersboeteTekstenComponent } from './PMHV/Verkeersboetenl.js';
         import { SkandaraTeksten, SkandaraTekstenComponent } from './PMHV/Skandara.js';
-        import { icons, initialFormData, config } from './util/config.js';
+        
+        // Category-based imports
+        import { PMVerkeersbordenVerkeersboetenl, PMVerkeersbordenVerkeersboetenComponent } from './PMHV/PMVerkeersbordenVerkeersboetenl.js';
+        import { PMVerkeersbordenSkandara, PMVerkeersbordenSkandaraComponent } from './PMHV/PMVerkeersbordenSkandara.js';
+        import { PMSnelheidVerkeersboetenl, PMSnelheidVerkeersboetenComponent } from './PMHV/PMSnelheidVerkeersboetenl.js';
+        import { PMSnelheidSkandara, PMSnelheidSkandaraComponent } from './PMHV/PMSnelheidSkandara.js';
+        import { PMZvZichtPlichtVerkeersboetenl, PMZvZichtPlichtVerkeersboetenComponent } from './PMHV/PMZvZichtPlichtVerkeersboetenl.js';
+        import { PMZvZichtPlichtSkandara, PMZvZichtPlichtSkandaraComponent } from './PMHV/PMZvZichtPlichtSkandara.js';
+        import { PMRijgedragVerkeersboetenl, PMRijgedragVerkeersboetenComponent } from './PMHV/PMRijgedragVerkeersboetenl.js';
+        import { PMRijgedragSkandara, PMRijgedragSkandaraComponent } from './PMHV/PMRijgedragSkandara.js';
+        import { PMParkerenVerkeersboetenl, PMParkerenVerkeersboetenComponent } from './PMHV/PMParkerenVerkeersboetenl.js';
+        import { PMParkerenSkandara, PMParkerenSkandaraComponent } from './PMHV/PMParkerenSkandara.js';
+        import { PMZvFlitsVerkeersboetenl, PMZvFlitsVerkeersboetenComponent } from './PMHV/PMZvFlitsVerkeersboetenl.js';
+        import { PMZvFlitsSkandara, PMZvFlitsSkandaraComponent } from './PMHV/PMZvFlitsSkandara.js';
+        
+        import { icons, initialFormData, config, categoryOptions } from './util/config.js';
 
         const { useState, useEffect, createElement: h, Fragment, useRef } = React;
 
@@ -102,6 +117,7 @@
             const [selectedStandaardTeksten, setSelectedStandaardTeksten] = useState({});
             const [aanwezigheidOptions, setAanwezigheidOptions] = useState(config.dropdownOptions.aanwezigheid);
             const [copyFeedback, setCopyFeedback] = useState({});
+            const [selectedCategory, setSelectedCategory] = useState('verkeersborden');
             
             const previewRef = useRef(null);
 
@@ -147,7 +163,21 @@
             useEffect(() => {
                 if (activeDocType === 'hoorverslag') {
                     const timeoutId = setTimeout(() => {
-                        HoorverslagNavigatie.slaDataOp(formData);
+                        // Explicitly save to the currently active hoorverslag number to avoid
+                        // potential races between the navigation module's internal number
+                        // and the React component state. Use slaSpecifiekVerslag with the
+                        // module-provided current number when available.
+                        if (typeof HoorverslagNavigatie.getHuidigNummer === 'function' && typeof HoorverslagNavigatie.slaSpecifiekVerslag === 'function') {
+                            try {
+                                const nummer = HoorverslagNavigatie.getHuidigNummer();
+                                HoorverslagNavigatie.slaSpecifiekVerslag(formData, nummer);
+                            } catch (e) {
+                                // Fallback to generic save if anything goes wrong
+                                HoorverslagNavigatie.slaDataOp(formData);
+                            }
+                        } else {
+                            HoorverslagNavigatie.slaDataOp(formData);
+                        }
                     }, 500);
 
                     return () => clearTimeout(timeoutId);
@@ -246,6 +276,12 @@
                 }));
             };
 
+            const handleCategoryChange = (category) => {
+                setSelectedCategory(category);
+                // Reset selected checkboxes when category changes
+                setSelectedStandaardTeksten({});
+            };
+
             const handleSaveDocx = () => {
                 if (typeof window.docx === 'undefined' || typeof window.saveAs === 'undefined') {
                     alert('Fout: Een benodigde library voor het downloaden is niet geladen.');
@@ -297,6 +333,38 @@
             const nextTutorialStep = () => setTutorialStep(prev => prev + 1);
             const prevTutorialStep = () => setTutorialStep(prev => prev - 1);
 
+            // Function to get category-specific checkbox data and component
+            const getCategoryCheckboxData = (category, company) => {
+                const categoryMap = {
+                    verkeersborden: {
+                        'verkeersboete.nl': { data: PMVerkeersbordenVerkeersboetenl, component: PMVerkeersbordenVerkeersboetenComponent },
+                        'skandara': { data: PMVerkeersbordenSkandara, component: PMVerkeersbordenSkandaraComponent }
+                    },
+                    snelheid: {
+                        'verkeersboete.nl': { data: PMSnelheidVerkeersboetenl, component: PMSnelheidVerkeersboetenComponent },
+                        'skandara': { data: PMSnelheidSkandara, component: PMSnelheidSkandaraComponent }
+                    },
+                    zvZichtPlicht: {
+                        'verkeersboete.nl': { data: PMZvZichtPlichtVerkeersboetenl, component: PMZvZichtPlichtVerkeersboetenComponent },
+                        'skandara': { data: PMZvZichtPlichtSkandara, component: PMZvZichtPlichtSkandaraComponent }
+                    },
+                    rijgedrag: {
+                        'verkeersboete.nl': { data: PMRijgedragVerkeersboetenl, component: PMRijgedragVerkeersboetenComponent },
+                        'skandara': { data: PMRijgedragSkandara, component: PMRijgedragSkandaraComponent }
+                    },
+                    parkeren: {
+                        'verkeersboete.nl': { data: PMParkerenVerkeersboetenl, component: PMParkerenVerkeersboetenComponent },
+                        'skandara': { data: PMParkerenSkandara, component: PMParkerenSkandaraComponent }
+                    },
+                    zvFlits: {
+                        'verkeersboete.nl': { data: PMZvFlitsVerkeersboetenl, component: PMZvFlitsVerkeersboetenComponent },
+                        'skandara': { data: PMZvFlitsSkandara, component: PMZvFlitsSkandaraComponent }
+                    }
+                };
+
+                return categoryMap[category]?.[company] || null;
+            };
+
             
             // =====================
             // 4. Documentgeneratie useEffect
@@ -328,15 +396,33 @@
 
                         let tekstenContent = '';
                         if (isVerkeersboeteSpecialCase) {
-                            tekstenContent = Object.keys(selectedStandaardTeksten)
-                                .filter(key => selectedStandaardTeksten[key] && VerkeersboeteTeksten[key])
-                                .map(key => VerkeersboeteTeksten[key].tekst)
-                                .join('\n\n');
+                            const categoryData = getCategoryCheckboxData(selectedCategory, 'verkeersboete.nl');
+                            if (categoryData) {
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && categoryData.data[key])
+                                    .map(key => categoryData.data[key].tekst)
+                                    .join('\n\n');
+                            } else {
+                                // Fallback to original for verkeersborden
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && VerkeersboeteTeksten[key])
+                                    .map(key => VerkeersboeteTeksten[key].tekst)
+                                    .join('\n\n');
+                            }
                         } else if (isSkandaraSpecialCase) {
-                            tekstenContent = Object.keys(selectedStandaardTeksten)
-                                .filter(key => selectedStandaardTeksten[key] && SkandaraTeksten[key])
-                                .map(key => SkandaraTeksten[key].tekst)
-                                .join('\n\n');
+                            const categoryData = getCategoryCheckboxData(selectedCategory, 'skandara');
+                            if (categoryData) {
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && categoryData.data[key])
+                                    .map(key => categoryData.data[key].tekst)
+                                    .join('\n\n');
+                            } else {
+                                // Fallback to original for verkeersborden
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && SkandaraTeksten[key])
+                                    .map(key => SkandaraTeksten[key].tekst)
+                                    .join('\n\n');
+                            }
                         }
                         data.aanvullendeGrondenSectie = tekstenContent ? `Aanvullende gronden op het beroepschrift\n${tekstenContent}` : (data.reactieVerweten ? `Aanvullende gronden op het beroepschrift\n${data.reactieVerweten.trim()}` : '');
 
@@ -691,16 +777,32 @@
                                     h('textarea', { id: 'reactie-te-laat', value: formData.reactieTeLaat, placeholder: 'Beschrijf de reactie op de te late indiening...', rows: 3, onChange: (e) => handleInputChange('reactieTeLaat', e.target.value) })
                                 ),
 
-                                isVerkeersboeteSpecialCase ?
-                                    h(VerkeersboeteTekstenComponent, { options: VerkeersboeteTeksten, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange }) :
-                                    (activeDocType === 'hoorverslag' && formData.bedrijfsNaam && formData.bedrijfsNaam.trim().toLowerCase() === 'skandara') ?
-                                        h(SkandaraTekstenComponent, { options: SkandaraTeksten, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange }) :
-                                        h(Fragment, null,
+                                (() => {
+                                    if (isVerkeersboeteSpecialCase) {
+                                        const categoryData = getCategoryCheckboxData(selectedCategory, 'verkeersboete.nl');
+                                        if (categoryData) {
+                                            const { data, component: CategoryComponent } = categoryData;
+                                            return h(CategoryComponent, { options: data, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                        }
+                                        // Fallback to original for verkeersborden
+                                        return h(VerkeersboeteTekstenComponent, { options: VerkeersboeteTeksten, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                    } else if (activeDocType === 'hoorverslag' && formData.bedrijfsNaam && formData.bedrijfsNaam.trim().toLowerCase() === 'skandara') {
+                                        const categoryData = getCategoryCheckboxData(selectedCategory, 'skandara');
+                                        if (categoryData) {
+                                            const { data, component: CategoryComponent } = categoryData;
+                                            return h(CategoryComponent, { options: data, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                        }
+                                        // Fallback to original for verkeersborden
+                                        return h(SkandaraTekstenComponent, { options: SkandaraTeksten, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                    } else {
+                                        return h(Fragment, null,
                                             h('div', { className: 'input-group' },
                                                 h('label', { htmlFor: 'reactie-verweten' }, 'Aanvullende gronden op het beroepschrift:'),
                                                 h('textarea', { id: 'reactie-verweten', value: formData.reactieVerweten, placeholder: '(Optioneel) Beschrijf eventuele aanvullende gronden...', rows: 4, onChange: (e) => handleInputChange('reactieVerweten', e.target.value) })
                                             )
-                                        ),
+                                        );
+                                    }
+                                })(),
 
                                 h('div', { className: 'section-header' }, h('span', null, 'Vragen en reacties')),
                                 h('div', { className: 'input-group' },
@@ -892,6 +994,26 @@
                 h('div', { className: 'app-container' },
                     h('div', { id: 'steps-sidebar', className: 'sidebar' },
                         h('div', { className: 'logo' }, 'DocGen'),
+                        activeDocType === 'hoorverslag' && h('div', { className: 'category-dropdown-container', style: { marginBottom: '16px' } },
+                            h('label', { htmlFor: 'category-select', style: { fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px', display: 'block' } }, 'Categorie:'),
+                            h('select', {
+                                id: 'category-select',
+                                value: selectedCategory,
+                                onChange: (e) => handleCategoryChange(e.target.value),
+                                style: {
+                                    width: '100%',
+                                    padding: '6px 8px',
+                                    fontSize: '12px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ddd',
+                                    backgroundColor: '#fff'
+                                }
+                            },
+                                categoryOptions.map(option =>
+                                    h('option', { key: option.id, value: option.id }, option.name)
+                                )
+                            )
+                        ),
                         h('div', { id: 'document-type-toggle', className: 'theme-toggle' },
                             config.documentTypes.map(doc => h('button', {
                                 key: doc.id,
