@@ -43,6 +43,7 @@ export const initialFormData = {
     beslissingTypeKeuze: '', referentieNummer: '', geadresseerde: '',
     accountNummer: '', contactPersoon: '', boeteNummer: '', voertuigInfo: '',
     overtredingDatum: '', overtredingType: '', clientId: '', serviceType: '',
+    coreTemplateKeuze: '',
     hoofdTekst: '', disclaimerTekst: '', handtekeningBlok: '', voorwaardenTekst: '',
     betalingsInformatie: '', bezwaarProcedure: '', juridischeGrondslag: '',
     bewijslijst: '', tariefInformatie: '', vertrouwelijkheidsClausule: '',
@@ -63,10 +64,8 @@ export const config = {
             { id: 'fysiek', name: 'Fysiek' }
         ],
         beslissing: [
-            { id: 'appjection', name: 'Appjection' }, { id: 'skandara', name: 'Skandara' },
             { id: 'verkeersboete', name: 'Verkeersboete.nl' },
-            { id: 'bezwaartegenverkeersboetes', name: 'Bezwaartegenverkeersboetes' },
-            { id: 'legalconsultancy', name: 'My Legal Consultancy' }
+            { id: 'skandara', name: 'Skandara' }
         ]
     },
     steps: {
@@ -89,11 +88,8 @@ export const config = {
             fysiek: `Beoordelaar: {{beoordelaarVolledigeNaam}}\nGriffier: {{griffierVolledigeNaam}}\n{{aanwezigheidsTekst}}\n{{redenNietAanwezigSectie}}\n\nProcesverloop\n{{procesverloopTekst}}\n\nCautie\nBij aanvang van het horen is medegedeeld dat het niet verplicht is om antwoord te geven op de gestelde vragen.\n\n{{tijdigheidSectie}}\n\n{{aanvullendeGrondenSectie}}\n\n{{vragenBeoordelaarSectie}}\n\n{{reactieBetrokkeneSectie}}\n\n{{vervolgvragenSectie}}\n\n{{afsprakenSectie}}\n\nAfloop van de zaak\n{{afloopZaakTekst}}`
         },
         beslissing: {
-            appjection: `APPJECTION BESLISSING DOCUMENT\n\nReferentie: {{referentieNummer}}\nDatum: {{huidigeDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nHierbij delen wij u mede onze beslissing inzake uw zaak.\n{{hoofdTekstMetSpacing}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{disclaimerTekstMetSpacing}}\n{{handtekeningBlokMetSpacing}}\nMet vriendelijke groet,\nAppjection Legal Team`,
-            skandara: `SKANDARA BESLISSING\n\nAccount: {{accountNummer}}\nContactpersoon: {{contactPersoon}}\nDatum: {{huidigeDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nNaar aanleiding van uw verzoek is het volgende besloten:\n{{hoofdTekstMetSpacing}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{voorwaardenTekstMetSpacing}}\n{{betalingsInformatieMetSpacing}}\nHoogachtend,\nSkandara Support Team`,
-            verkeersboete: `BESLISSING INZAKE VERKEERSBOETE\n\nKenmerk: {{boeteNummer}}\nVoertuig: {{voertuigInfo}}\nDatum overtreding: {{overtredingDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte heer/mevrouw {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nMet betrekking tot de geconstateerde verkeersovertreding is het volgende besloten:\n{{hoofdTekstMetSpacing}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{bezwaarProcedureMetSpacing}}\nHoogachtend,\nVerkeersboete.nl Administration`,
-            bezwaartegenverkeersboetes: `BESLISSING OP BEZWAAR\n\nReferentie: {{referentieNummer}}\nOvertreding: {{overtredingType}}\nDatum: {{huidigeDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte heer/mevrouw {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nNaar aanleiding van uw bezwaarschrift is het volgende besloten:\n{{hoofdTekstMetSpacing}}\n{{juridischeGrondslagMetSpacing}}\n{{bewijslijstMetSpacing}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\nHoogachtend,\nBezwaartegenverkeersboetes Team`,
-            legalconsultancy: `JURIDISCH ADVIES\n\nCliënt ID: {{clientId}}\nService: {{serviceType}}\nDatum: {{huidigeDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte cliënt {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nHierbij ontvangt u ons juridisch advies inzake uw zaak:\n{{hoofdTekstMetSpacing}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{tariefInformatieMetSpacing}}\n{{vertrouwelijkheidsClausuleMetSpacing}}\nMet vriendelijke groet,\nMy Legal Consultancy`
+            verkeersboete: `BESLISSING INZAKE VERKEERSBOETE\n\nKenmerk: {{boeteNummer}}\nVoertuig: {{voertuigInfo}}\nDatum overtreding: {{overtredingDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte heer/mevrouw {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nMet betrekking tot de geconstateerde verkeersovertreding is het volgende besloten:\n{{hoofdTekstMetSpacing}}\n{{aanvullendeGrondenSectie}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{bezwaarProcedureMetSpacing}}\nHoogachtend,\nVerkeersboete.nl Administration`,
+            skandara: `SKANDARA BESLISSING\n\nAccount: {{accountNummer}}\nContactpersoon: {{contactPersoon}}\nDatum: {{huidigeDatum}}\nTijdsregistratie: {{startTime}} - {{endTime}}\n\nGeachte {{geadresseerde}},\n\n{{beslissingTypeInfo}}\nNaar aanleiding van uw verzoek is het volgende besloten:\n{{hoofdTekstMetSpacing}}\n{{aanvullendeGrondenSectie}}\n{{aanvullendeArgumentenMetSpacing}}\n{{besluitTekstMetSpacing}}\n{{voorwaardenTekstMetSpacing}}\n{{betalingsInformatieMetSpacing}}\nHoogachtend,\nSkandara Support Team`
         }
     },
     dropdownOptions: {
@@ -116,6 +112,10 @@ export const config = {
             { value: 'L618', label: 'L 618 Verzoek horen, gemaaktigde neemt telefoon niet op, ongegrond' }, { value: 'L619', label: 'L 619 Verzoek horen, gemaaktigde neemt telefoon niet op, wijziging' },
             { value: 'L620', label: 'L 620 Verzoek horen, gemaaktigde neemt telefoon niet op, vernietiging' }, { value: 'L635', label: 'L 635 Verzoek horen, geen hoorzitting ivm ingebrekestelling, ongegrond' },
             { value: 'L636', label: 'L 636 Verzoek horen, geen hoorzitting ivm ingebrekestelling, wijzigen' }, { value: 'L637', label: 'L 637 Verzoek horen, geen hoorzitting ivm ingebrekestelling, vernietigen' }
+        ],
+        coreTemplateOpties: [
+            { value: '', label: 'Selecteer core template...' },
+            { value: 'coreTemplate', label: 'Standaard Beslissing Template (Verkeersborden)' }
         ]
     }
 };

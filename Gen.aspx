@@ -112,6 +112,10 @@
         import { PMZvFlitsVerkeersboetenl, PMZvFlitsVerkeersboetenComponent } from './PMHV/PMZvFlitsVerkeersboetenl.js';
         import { PMZvFlitsSkandara, PMZvFlitsSkandaraComponent } from './PMHV/PMZvFlitsSkandara.js';
         
+        // PMBS imports for Beslissing mode
+        import { PMBSVerkeersbordenVerkeersboeteNL, PMBSVerkeersbordenVerkeersboeteNLComponent } from './PMBS/PMVerkeersbordenVerkeersboeteNL.js';
+        import { PMBSVerkeersbordenSkandara, PMBSVerkeersbordenSkandaraComponent } from './PMBS/PMVerkeersbordenSkandara.js';
+        
         import { icons, initialFormData, config, categoryOptions } from './util/config.js';
 
         const { useState, useEffect, createElement: h, Fragment, useRef } = React;
@@ -655,7 +659,20 @@
                 }
             };
 
-            // Function to get category-specific checkbox data and component
+            // Function to get category-specific checkbox data and component for Beslissing mode
+            const getBeslissingCategoryCheckboxData = (category, company) => {
+                const categoryMap = {
+                    verkeersborden: {
+                        'verkeersboete.nl': { data: PMBSVerkeersbordenVerkeersboeteNL, component: PMBSVerkeersbordenVerkeersboeteNLComponent },
+                        'skandara': { data: PMBSVerkeersbordenSkandara, component: PMBSVerkeersbordenSkandaraComponent }
+                    }
+                    // Additional categories can be added here later
+                };
+
+                return categoryMap[category]?.[company] || null;
+            };
+
+            // Function to get category-specific checkbox data and component for Hoorverslag mode
             const getCategoryCheckboxData = (category, company) => {
                 const categoryMap = {
                     verkeersborden: {
@@ -806,6 +823,51 @@
                     } else if (activeDocType === 'beslissing') {
                         const selectedOption = config.dropdownOptions.beslissingTypeOpties.find(opt => opt.value === data.beslissingTypeKeuze);
                         data.beslissingTypeInfo = selectedOption ? `Gekozen Type Beslissing: ${selectedOption.label}\n` : '';
+                        
+                        // Handle core template and checkbox content for decisions
+                        let coreTemplateContent = '';
+                        let tekstenContent = '';
+                        const isVerkeersboeteDecision = activeSubtype === 'verkeersboete';
+                        const isSkandaraDecision = activeSubtype === 'skandara';
+                        
+                        // Add core template content if selected
+                        if (data.coreTemplateKeuze && isVerkeersboeteDecision) {
+                            const categoryData = getBeslissingCategoryCheckboxData(selectedCategory, 'verkeersboete.nl');
+                            if (categoryData && categoryData.data[data.coreTemplateKeuze]) {
+                                coreTemplateContent = categoryData.data[data.coreTemplateKeuze].tekst;
+                            }
+                        }
+                        
+                        // Add checkbox content
+                        if (isVerkeersboeteDecision) {
+                            const categoryData = getBeslissingCategoryCheckboxData(selectedCategory, 'verkeersboete.nl');
+                            if (categoryData) {
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && categoryData.data[key] && key !== data.coreTemplateKeuze) // Exclude core template from checkbox content
+                                    .map(key => categoryData.data[key].tekst)
+                                    .join('\n\n');
+                            }
+                        } else if (isSkandaraDecision) {
+                            const categoryData = getBeslissingCategoryCheckboxData(selectedCategory, 'skandara');
+                            if (categoryData) {
+                                tekstenContent = Object.keys(selectedStandaardTeksten)
+                                    .filter(key => selectedStandaardTeksten[key] && categoryData.data[key])
+                                    .map(key => categoryData.data[key].tekst)
+                                    .join('\n\n');
+                            }
+                        }
+                        
+                        // Combine core template and additional checkbox content
+                        let combinedContent = '';
+                        if (coreTemplateContent) {
+                            combinedContent = coreTemplateContent;
+                        }
+                        if (tekstenContent) {
+                            combinedContent += (combinedContent ? '\n\n' : '') + tekstenContent;
+                        }
+                        
+                        data.aanvullendeGrondenSectie = combinedContent ? `\n\n${combinedContent}` : '';
+                        
                         data.hoofdTekstMetSpacing = addDoubleSpacingIfNeeded(data.hoofdTekst);
                         data.aanvullendeArgumentenMetSpacing = addDoubleSpacingIfNeeded(data.aanvullendeArgumenten);
                         data.besluitTekstMetSpacing = addDoubleSpacingIfNeeded(data.besluitTekst);
@@ -1285,9 +1347,39 @@
                             return h('div', { className: 'step-content-inner' },
                                 h('div', { className: 'section-header' }, h('span', null, 'Argumenten en Onderbouwing')),
                                 h('div', { className: 'input-group' },
+                                    h('label', { htmlFor: 'core-template-keuze' }, 'Core Template:'),
+                                    h('select', { 
+                                        id: 'core-template-keuze', 
+                                        value: formData.coreTemplateKeuze, 
+                                        onChange: (e) => handleInputChange('coreTemplateKeuze', e.target.value)
+                                    },
+                                        config.dropdownOptions.coreTemplateOpties.map(opt => 
+                                            h('option', { key: opt.value, value: opt.value }, opt.label)
+                                        )
+                                    )
+                                ),
+                                h('div', { className: 'input-group' },
                                     h('label', { htmlFor: 'hoofdTekst' }, 'Hoofdtekst:'),
                                     h('textarea', { id: 'hoofdTekst', value: formData.hoofdTekst, placeholder: 'Voer de hoofdtekst van de beslissing in...', rows: 6, onChange: (e) => handleInputChange('hoofdTekst', e.target.value) })
                                 ),
+
+                                // Checkbox section for PMBS options
+                                (() => {
+                                    if (activeSubtype === 'verkeersboete') {
+                                        const categoryData = getBeslissingCategoryCheckboxData(selectedCategory, 'verkeersboete.nl');
+                                        if (categoryData) {
+                                            const { data, component: CategoryComponent } = categoryData;
+                                            return h(CategoryComponent, { options: data, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                        }
+                                    } else if (activeSubtype === 'skandara') {
+                                        const categoryData = getBeslissingCategoryCheckboxData(selectedCategory, 'skandara');
+                                        if (categoryData) {
+                                            const { data, component: CategoryComponent } = categoryData;
+                                            return h(CategoryComponent, { options: data, selectedOptions: selectedStandaardTeksten, onChange: handleStandaardTekstChange });
+                                        }
+                                    }
+                                    return null;
+                                })(),
                                 h('div', { className: 'input-group' },
                                     h('label', { htmlFor: 'juridischeGrondslag' }, 'Juridische Grondslag:'),
                                     h('textarea', { id: 'juridischeGrondslag', value: formData.juridischeGrondslag, placeholder: 'Beschrijf de juridische grondslag...', rows: 4, onChange: (e) => handleInputChange('juridischeGrondslag', e.target.value) })
@@ -1347,7 +1439,7 @@
                 h('div', { className: 'app-container' },
                     h('div', { id: 'steps-sidebar', className: 'sidebar' },
                         h('div', { className: 'logo' }, 'DocGen'),
-                        activeDocType === 'hoorverslag' && h('div', { className: 'category-dropdown-container', style: { marginBottom: '16px' } },
+                        (activeDocType === 'hoorverslag' || activeDocType === 'beslissing') && h('div', { className: 'category-dropdown-container', style: { marginBottom: '16px' } },
                             h('label', { htmlFor: 'category-select', style: { fontSize: '12px', fontWeight: '500', color: '#666', marginBottom: '4px', display: 'block' } }, 'Categorie:'),
                             h('select', {
                                 id: 'category-select',
