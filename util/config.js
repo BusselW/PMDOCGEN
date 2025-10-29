@@ -47,7 +47,9 @@ export const initialFormData = {
     betalingsInformatie: '', bezwaarProcedure: '', juridischeGrondslag: '',
     bewijslijst: '', tariefInformatie: '', vertrouwelijkheidsClausule: '',
     aanvullendeArgumenten: '', besluitTekst: '', startTime: '', endTime: '',
-    contactpogingen: 2
+    contactpogingen: 2,
+    selectedStandaardTeksten: {},
+    selectedCategory: 'verkeersborden'
 };
 
 export const config = {

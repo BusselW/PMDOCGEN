@@ -140,13 +140,23 @@
                 if (activeDocType === 'hoorverslag') {
                     HoorverslagNavigatie.initialiseer({
                         opLaden: (opgeslagenData) => {
-                            setFormData(opgeslagenData || { ...initialFormData, tijdigheidBeroepType: 'tijdigIngediend' });
+                            const defaultData = { ...initialFormData, tijdigheidBeroepType: 'tijdigIngediend' };
+                            const loadedData = opgeslagenData || defaultData;
+                            setFormData(loadedData);
+                            // Load the checkbox selections and category specific to this hoorverslag
+                            setSelectedStandaardTeksten(loadedData.selectedStandaardTeksten || {});
+                            setSelectedCategory(loadedData.selectedCategory || 'verkeersborden');
                         },
                         opOpslaan: (nummerOmOpTeSlaan) => {
-                             // AANGEPAST: Gebruik een specifieke opslagfunctie met het juiste nummer
+                             // AANGEPAST: Include checkbox data when saving
                             setFormData(current => {
-                                HoorverslagNavigatie.slaSpecifiekVerslag(current, nummerOmOpTeSlaan);
-                                return current;
+                                const dataToSave = {
+                                    ...current,
+                                    selectedStandaardTeksten: selectedStandaardTeksten,
+                                    selectedCategory: selectedCategory
+                                };
+                                HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummerOmOpTeSlaan);
+                                return dataToSave;
                             });
                         },
                         opNummersWijziging: (nieuwNummer) => {
@@ -158,11 +168,18 @@
                 }
 
                 return () => HoorverslagNavigatie.verwijder();
-            }, [activeDocType]);
+            }, [activeDocType, selectedStandaardTeksten, selectedCategory]);
 
             useEffect(() => {
                 if (activeDocType === 'hoorverslag') {
                     const timeoutId = setTimeout(() => {
+                        // Include checkbox data and category in autosave
+                        const dataToSave = {
+                            ...formData,
+                            selectedStandaardTeksten: selectedStandaardTeksten,
+                            selectedCategory: selectedCategory
+                        };
+                        
                         // Explicitly save to the currently active hoorverslag number to avoid
                         // potential races between the navigation module's internal number
                         // and the React component state. Use slaSpecifiekVerslag with the
@@ -170,19 +187,19 @@
                         if (typeof HoorverslagNavigatie.getHuidigNummer === 'function' && typeof HoorverslagNavigatie.slaSpecifiekVerslag === 'function') {
                             try {
                                 const nummer = HoorverslagNavigatie.getHuidigNummer();
-                                HoorverslagNavigatie.slaSpecifiekVerslag(formData, nummer);
+                                HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummer);
                             } catch (e) {
                                 // Fallback to generic save if anything goes wrong
-                                HoorverslagNavigatie.slaDataOp(formData);
+                                HoorverslagNavigatie.slaDataOp(dataToSave);
                             }
                         } else {
-                            HoorverslagNavigatie.slaDataOp(formData);
+                            HoorverslagNavigatie.slaDataOp(dataToSave);
                         }
                     }, 500);
 
                     return () => clearTimeout(timeoutId);
                 }
-            }, [formData, activeDocType]);
+            }, [formData, activeDocType, selectedStandaardTeksten, selectedCategory]);
             
             // =====================
             // EINDE HOORVERSLAG NAVIGATIE INTEGRATIE
@@ -239,12 +256,14 @@
                 setActiveFormStep(1);
                 setFormData({ ...initialFormData });
                 setSelectedStandaardTeksten({});
+                setSelectedCategory('verkeersborden');
                 setTijdsregistratieVerdeeld(false);
             };
 
             const handleSubtypeChange = (subtype) => {
                 setActiveSubtype(subtype);
                 setSelectedStandaardTeksten({});
+                setSelectedCategory('verkeersborden');
                 setFormData({ ...initialFormData });
             };
 
@@ -278,8 +297,15 @@
 
             const handleCategoryChange = (category) => {
                 setSelectedCategory(category);
-                // Reset selected checkboxes when category changes
+                // Reset selected checkboxes when category changes for current hoorverslag only
                 setSelectedStandaardTeksten({});
+                
+                // Update form data to trigger autosave with new category and reset checkboxes
+                setFormData(prev => ({
+                    ...prev,
+                    selectedStandaardTeksten: {},
+                    selectedCategory: category
+                }));
             };
 
             const handleSaveDocx = () => {
@@ -315,6 +341,7 @@
                 handleSaveDocx();
                 setFormData({ ...initialFormData });
                 setSelectedStandaardTeksten({});
+                setSelectedCategory('verkeersborden');
             };
 
             const selecteerBedrijf = (bedrijfsnaam) => {
