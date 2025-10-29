@@ -136,48 +136,77 @@
             // HOORVERSLAG NAVIGATIE INTEGRATIE
             // =====================
             
+            // Store refs for current state values to avoid stale closures
+            const selectedStandaardTekstenRef = useRef(selectedStandaardTeksten);
+            const selectedCategoryRef = useRef(selectedCategory);
+            const formDataRef = useRef(formData);
+            
+            // Update refs when state changes
             useEffect(() => {
+                selectedStandaardTekstenRef.current = selectedStandaardTeksten;
+            }, [selectedStandaardTeksten]);
+            
+            useEffect(() => {
+                selectedCategoryRef.current = selectedCategory;
+            }, [selectedCategory]);
+            
+            useEffect(() => {
+                formDataRef.current = formData;
+            }, [formData]);
+
+            useEffect(() => {
+                console.log('Navigation useEffect triggered, activeDocType:', activeDocType);
+                
                 if (activeDocType === 'hoorverslag') {
-                    HoorverslagNavigatie.initialiseer({
-                        opLaden: (opgeslagenData) => {
-                            const defaultData = { ...initialFormData, tijdigheidBeroepType: 'tijdigIngediend' };
-                            const loadedData = opgeslagenData || defaultData;
-                            setFormData(loadedData);
-                            // Load the checkbox selections and category specific to this hoorverslag
-                            setSelectedStandaardTeksten(loadedData.selectedStandaardTeksten || {});
-                            setSelectedCategory(loadedData.selectedCategory || 'verkeersborden');
-                        },
-                        opOpslaan: (nummerOmOpTeSlaan) => {
-                             // AANGEPAST: Include checkbox data when saving
-                            setFormData(current => {
+                    console.log('Initializing navigation for hoorverslag...');
+                    // Add a small delay to ensure DOM is ready
+                    const timer = setTimeout(() => {
+                        console.log('Timer executed, calling HoorverslagNavigatie.initialiseer');
+                        HoorverslagNavigatie.initialiseer({
+                            opLaden: (opgeslagenData) => {
+                                console.log('Navigation onLaden callback called with:', opgeslagenData);
+                                const defaultData = { ...initialFormData, tijdigheidBeroepType: 'tijdigIngediend' };
+                                const loadedData = opgeslagenData || defaultData;
+                                setFormData(loadedData);
+                                // Load the checkbox selections and category specific to this hoorverslag
+                                setSelectedStandaardTeksten(loadedData.selectedStandaardTeksten || {});
+                                setSelectedCategory(loadedData.selectedCategory || 'verkeersborden');
+                            },
+                            opOpslaan: (nummerOmOpTeSlaan) => {
+                                console.log('Navigation onOpslaan callback called for nummer:', nummerOmOpTeSlaan);
+                                 // AANGEPAST: Include checkbox data when saving
                                 const dataToSave = {
-                                    ...current,
-                                    selectedStandaardTeksten: selectedStandaardTeksten,
-                                    selectedCategory: selectedCategory
+                                    ...formDataRef.current,
+                                    selectedStandaardTeksten: selectedStandaardTekstenRef.current,
+                                    selectedCategory: selectedCategoryRef.current
                                 };
                                 HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummerOmOpTeSlaan);
-                                return dataToSave;
-                            });
-                        },
-                        opNummersWijziging: (nieuwNummer) => {
-                            setActiveFormStep(1);
-                        }
-                    });
+                            },
+                            opNummersWijziging: (nieuwNummer) => {
+                                console.log('Navigation onNummersWijziging callback called with:', nieuwNummer);
+                                setActiveFormStep(1);
+                            }
+                        });
+                    }, 100);
+
+                    return () => {
+                        clearTimeout(timer);
+                        HoorverslagNavigatie.verwijder();
+                    };
                 } else {
+                    console.log('Removing navigation for non-hoorverslag document type');
                     HoorverslagNavigatie.verwijder();
                 }
-
-                return () => HoorverslagNavigatie.verwijder();
-            }, [activeDocType, selectedStandaardTeksten, selectedCategory]);
+            }, [activeDocType]);
 
             useEffect(() => {
                 if (activeDocType === 'hoorverslag') {
                     const timeoutId = setTimeout(() => {
-                        // Include checkbox data and category in autosave
+                        // Include checkbox data and category in autosave using current ref values
                         const dataToSave = {
-                            ...formData,
-                            selectedStandaardTeksten: selectedStandaardTeksten,
-                            selectedCategory: selectedCategory
+                            ...formDataRef.current,
+                            selectedStandaardTeksten: selectedStandaardTekstenRef.current,
+                            selectedCategory: selectedCategoryRef.current
                         };
                         
                         // Explicitly save to the currently active hoorverslag number to avoid
@@ -299,13 +328,6 @@
                 setSelectedCategory(category);
                 // Reset selected checkboxes when category changes for current hoorverslag only
                 setSelectedStandaardTeksten({});
-                
-                // Update form data to trigger autosave with new category and reset checkboxes
-                setFormData(prev => ({
-                    ...prev,
-                    selectedStandaardTeksten: {},
-                    selectedCategory: category
-                }));
             };
 
             const handleSaveDocx = () => {
