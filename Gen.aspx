@@ -377,10 +377,41 @@
 
             const goToNextFormStep = () => setActiveFormStep(prev => Math.min(prev + 1, (config.steps[activeDocType] || []).length));
             const goToPrevFormStep = () => setActiveFormStep(prev => Math.max(1, prev - 1));
-            const startTutorial = () => setTutorialStep(1);
+            const startTutorial = () => {
+                // Ensure we're on hoorverslag for the full tutorial experience
+                if (activeDocType !== 'hoorverslag') {
+                    handleDocTypeChange('hoorverslag');
+                }
+                setTutorialStep(1);
+            };
             const endTutorial = () => setTutorialStep(0);
-            const nextTutorialStep = () => setTutorialStep(prev => prev + 1);
-            const prevTutorialStep = () => setTutorialStep(prev => prev - 1);
+            const nextTutorialStep = () => {
+                let nextStep = tutorialStep + 1;
+                // Skip steps if target elements don't exist
+                while (nextStep <= tutorialSteps.length) {
+                    const targetId = tutorialSteps[nextStep - 1].targetId;
+                    if (document.getElementById(targetId)) {
+                        setTutorialStep(nextStep);
+                        return;
+                    }
+                    nextStep++;
+                }
+                // If no valid next step found, end tutorial
+                endTutorial();
+            };
+            const prevTutorialStep = () => {
+                let prevStep = tutorialStep - 1;
+                // Skip steps if target elements don't exist
+                while (prevStep >= 1) {
+                    const targetId = tutorialSteps[prevStep - 1].targetId;
+                    if (document.getElementById(targetId)) {
+                        setTutorialStep(prevStep);
+                        return;
+                    }
+                    prevStep--;
+                }
+                // If no valid previous step found, stay at current step
+            };
 
             // Function to get category-specific checkbox data and component
             const getCategoryCheckboxData = (category, company) => {
@@ -597,6 +628,27 @@
                             height: `${rect.height + 10}px`,
                             display: 'block'
                         });
+                    } else {
+                        // Element not found, show message without highlight
+                        overlay.style.display = 'none';
+                        console.log(`Tutorial step ${tutorialStep}: Element '${currentStepData.targetId}' not found`);
+                        
+                        // For certain elements that might appear later, add a delay and retry
+                        if (currentStepData.targetId === 'hoorverslag-navigatie-container') {
+                            setTimeout(() => {
+                                const retryElement = document.getElementById(currentStepData.targetId);
+                                if (retryElement) {
+                                    const rect = retryElement.getBoundingClientRect();
+                                    Object.assign(overlay.style, {
+                                        left: `${rect.left + window.scrollX - 5}px`,
+                                        top: `${rect.top + window.scrollY - 5}px`,
+                                        width: `${rect.width + 10}px`,
+                                        height: `${rect.height + 10}px`,
+                                        display: 'block'
+                                    });
+                                }
+                            }, 500);
+                        }
                     }
                 } else {
                     overlay.style.display = 'none';
@@ -1102,7 +1154,7 @@
                                     }
                                 })
                             ),
-                            h('button', { className: 'action-button help-button', onClick: startTutorial }, h('span', { dangerouslySetInnerHTML: {__html: icons.questionCircle}}), " Tutorial")
+                            h('button', { id: 'help-button', className: 'action-button help-button', onClick: startTutorial }, h('span', { dangerouslySetInnerHTML: {__html: icons.questionCircle}}), " Tutorial")
                         ),
                         h('div', { id: 'subtype-tabs', className: 'company-tabs' },
                             (config.subtypes[activeDocType] || []).map(sub => h('button', {
