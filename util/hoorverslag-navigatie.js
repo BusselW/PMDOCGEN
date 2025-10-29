@@ -185,12 +185,9 @@ const HoorverslagNavigatie = (() => {
      * Maak de navigatie UI aan
      */
     const maakNavigatieUI = () => {
-        console.log('Creating hoorverslag navigation UI...');
-        
         const bestaandeNavigatie = document.getElementById('hoorverslag-navigatie-container');
         if (bestaandeNavigatie) {
             bestaandeNavigatie.remove();
-            console.log('Removed existing navigation UI');
         }
 
         const container = document.createElement('div');
@@ -229,7 +226,6 @@ const HoorverslagNavigatie = (() => {
 
         try {
             document.body.appendChild(container);
-            console.log('Navigation UI added to DOM');
 
             // Event listeners voor buttons
             document.getElementById('hoorverslag-vorig-btn').addEventListener('click', naarVorig);
@@ -251,7 +247,6 @@ const HoorverslagNavigatie = (() => {
         });
 
         updateNavigatieUI();
-        console.log('Navigation UI initialization complete');
     };
 
     /**
@@ -285,8 +280,6 @@ const HoorverslagNavigatie = (() => {
          * @param {Function} callbacks.opNummersWijziging - Wordt aangeroepen wanneer hoorverslag nummer wijzigt
          */
         initialiseer: (callbacks = {}) => {
-            console.log('Starting hoorverslag navigation initialization...');
-            
             navigatieCallbacks = {
                 opLaden: callbacks.opLaden || null,
                 opOpslaan: callbacks.opOpslaan || null,
@@ -341,14 +334,10 @@ const HoorverslagNavigatie = (() => {
          * Verwijder navigatie UI en event listeners
          */
         verwijder: () => {
-            console.log('Removing hoorverslag navigation...');
             document.removeEventListener('keydown', handleKeyboard);
             const container = document.getElementById('hoorverslag-navigatie-container');
             if (container) {
                 container.remove();
-                console.log('Navigation UI removed from DOM');
-            } else {
-                console.log('No navigation UI found to remove');
             }
         },
 

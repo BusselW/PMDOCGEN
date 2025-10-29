@@ -12,6 +12,26 @@
     <script src="https://som.org.om.local/sites/MulderT/CustomPW/UPP/PMDOC/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+    <!-- Backup DOCX library from different CDN -->
+    <script>
+        // Check if docx loaded, if not try alternative
+        window.addEventListener('load', function() {
+            if (typeof window.docx === 'undefined') {
+                console.log('Primary DOCX library failed, loading backup...');
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+                script.onload = function() {
+                    console.log('Backup DOCX library loaded successfully');
+                };
+                script.onerror = function() {
+                    console.error('Both DOCX libraries failed to load');
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log('DOCX library loaded successfully');
+            }
+        });
+    </script>
     <script src="https://som.org.om.local/sites/MulderT/CustomPW/UPP/PMDOC/handlebars.js"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -155,16 +175,11 @@
             }, [formData]);
 
             useEffect(() => {
-                console.log('Navigation useEffect triggered, activeDocType:', activeDocType);
-                
                 if (activeDocType === 'hoorverslag') {
-                    console.log('Initializing navigation for hoorverslag...');
                     // Add a small delay to ensure DOM is ready
                     const timer = setTimeout(() => {
-                        console.log('Timer executed, calling HoorverslagNavigatie.initialiseer');
                         HoorverslagNavigatie.initialiseer({
                             opLaden: (opgeslagenData) => {
-                                console.log('Navigation onLaden callback called with:', opgeslagenData);
                                 const defaultData = { ...initialFormData, tijdigheidBeroepType: 'tijdigIngediend' };
                                 const loadedData = opgeslagenData || defaultData;
                                 setFormData(loadedData);
@@ -173,7 +188,6 @@
                                 setSelectedCategory(loadedData.selectedCategory || 'verkeersborden');
                             },
                             opOpslaan: (nummerOmOpTeSlaan) => {
-                                console.log('Navigation onOpslaan callback called for nummer:', nummerOmOpTeSlaan);
                                  // AANGEPAST: Include checkbox data when saving
                                 const dataToSave = {
                                     ...formDataRef.current,
@@ -183,7 +197,6 @@
                                 HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummerOmOpTeSlaan);
                             },
                             opNummersWijziging: (nieuwNummer) => {
-                                console.log('Navigation onNummersWijziging callback called with:', nieuwNummer);
                                 setActiveFormStep(1);
                             }
                         });
@@ -194,7 +207,6 @@
                         HoorverslagNavigatie.verwijder();
                     };
                 } else {
-                    console.log('Removing navigation for non-hoorverslag document type');
                     HoorverslagNavigatie.verwijder();
                 }
             }, [activeDocType]);
@@ -330,22 +342,116 @@
                 setSelectedStandaardTeksten({});
             };
 
-            const handleSaveDocx = () => {
-                if (typeof window.docx === 'undefined' || typeof window.saveAs === 'undefined') {
-                    alert('Fout: Een benodigde library voor het downloaden is niet geladen.');
+            const handleSaveDocx = async () => {
+                // Check if libraries are loaded
+                if (typeof window.docx === 'undefined') {
+                    alert('Fout: De DOCX library is niet geladen. Probeer de pagina te verversen.');
                     return;
                 }
-                if (previewRef.current) {
-                    const { Document, Packer, Paragraph, TextRun } = window.docx;
-                    
-                    const plainTextForExport = previewRef.current.innerText;
+                if (typeof window.saveAs === 'undefined') {
+                    alert('Fout: De FileSaver library is niet geladen. Probeer de pagina te verversen.');
+                    return;
+                }
 
-                    const textParagraphs = plainTextForExport.split('\n').map(
-                        line => new Paragraph({ children: [new TextRun(line)] })
-                    );
-                    const doc = new Document({ sections: [{ children: textParagraphs }] });
-                    const fileName = `${activeDocType}_${activeSubtype}_${new Date().toISOString().slice(0, 10)}.docx`;
-                    Packer.toBlob(doc).then(blob => { window.saveAs(blob, fileName); });
+                try {
+                    const { Document, Packer, Paragraph, TextRun, PageBreak } = window.docx;
+
+                    if (activeDocType === 'hoorverslag') {
+                        // For hoorverslagen, create a document with all saved hoorverslagen
+                        const allSections = [];
+                        const MAX_HOORVERSLAGEN = 20;
+                        let addedHoorverslagen = 0;
+
+                        // Get all stored hoorverslag data
+                        const storageKey = 'hoorverslagen_data';
+                        let allData = {};
+                        try {
+                            const storedData = sessionStorage.getItem(storageKey);
+                            if (storedData) {
+                                allData = JSON.parse(storedData);
+                            }
+                        } catch (e) {
+                            console.error("Error reading sessionStorage", e);
+                        }
+
+                        // Generate content for each hoorverslag that has data
+                        for (let i = 1; i <= MAX_HOORVERSLAGEN; i++) {
+                            if (allData[i] && allData[i].data) {
+                                const hoorverslagData = allData[i].data;
+                                
+                                // Generate the document content for this hoorverslag
+                                const tempFormData = { ...hoorverslagData };
+                                const generatedContent = generateHoorverslagContent(tempFormData, i);
+                                
+                                if (generatedContent && generatedContent.trim()) {
+                                    const paragraphs = generatedContent.split('\n').map(line => 
+                                        new Paragraph({ 
+                                            children: [new TextRun(line || ' ')] // Ensure empty lines have space
+                                        })
+                                    );
+
+                                    // Add header with hoorverslag number
+                                    const headerParagraphs = [
+                                        new Paragraph({ 
+                                            children: [new TextRun({ text: `HOORVERSLAG ${i}`, bold: true, size: 28 })] 
+                                        }),
+                                        new Paragraph({ children: [new TextRun(' ')] }), // Empty line
+                                        ...paragraphs
+                                    ];
+
+                                    if (addedHoorverslagen > 0) {
+                                        // Add page break before each new hoorverslag (except the first)
+                                        headerParagraphs.unshift(new Paragraph({ 
+                                            children: [new PageBreak()] 
+                                        }));
+                                    }
+
+                                    allSections.push(...headerParagraphs);
+                                    addedHoorverslagen++;
+                                }
+                            }
+                        }
+
+                        if (addedHoorverslagen === 0) {
+                            // No saved hoorverslagen found, export current one
+                            if (previewRef.current) {
+                                const plainTextForExport = previewRef.current.innerText;
+                                const textParagraphs = plainTextForExport.split('\n').map(
+                                    line => new Paragraph({ children: [new TextRun(line || ' ')] })
+                                );
+                                allSections.push(...textParagraphs);
+                                addedHoorverslagen = 1;
+                            }
+                        }
+
+                        if (allSections.length > 0) {
+                            const doc = new Document({ 
+                                sections: [{ 
+                                    children: allSections 
+                                }] 
+                            });
+                            const fileName = `Hoorverslagen_${addedHoorverslagen}x_${new Date().toISOString().slice(0, 10)}.docx`;
+                            const blob = await Packer.toBlob(doc);
+                            window.saveAs(blob, fileName);
+                        } else {
+                            alert('Geen hoorverslagen om te exporteren gevonden.');
+                        }
+                    } else {
+                        // For non-hoorverslag documents, export current preview
+                        if (previewRef.current) {
+                            const plainTextForExport = previewRef.current.innerText;
+                            const textParagraphs = plainTextForExport.split('\n').map(
+                                line => new Paragraph({ children: [new TextRun(line || ' ')] })
+                            );
+                            const doc = new Document({ sections: [{ children: textParagraphs }] });
+                            const fileName = `${activeDocType}_${activeSubtype}_${new Date().toISOString().slice(0, 10)}.docx`;
+                            const blob = await Packer.toBlob(doc);
+                            window.saveAs(blob, fileName);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error creating Word document:', error);
+                    alert('Fout bij het maken van het Word document: ' + error.message);
                 }
             };
 
@@ -387,10 +493,21 @@
             const endTutorial = () => setTutorialStep(0);
             const nextTutorialStep = () => {
                 let nextStep = tutorialStep + 1;
-                // Skip steps if target elements don't exist
+                // Skip steps if target elements don't exist or requirements not met
                 while (nextStep <= tutorialSteps.length) {
-                    const targetId = tutorialSteps[nextStep - 1].targetId;
-                    if (document.getElementById(targetId)) {
+                    const stepData = tutorialSteps[nextStep - 1];
+                    
+                    // Check if step requires hoorverslag mode
+                    if (stepData.requiresHoorverslag && activeDocType !== 'hoorverslag') {
+                        nextStep++;
+                        continue;
+                    }
+                    
+                    // Check if target element exists, or use fallback
+                    const targetExists = document.getElementById(stepData.targetId);
+                    const fallbackExists = stepData.fallbackId ? document.getElementById(stepData.fallbackId) : false;
+                    
+                    if (targetExists || fallbackExists) {
                         setTutorialStep(nextStep);
                         return;
                     }
@@ -401,16 +518,141 @@
             };
             const prevTutorialStep = () => {
                 let prevStep = tutorialStep - 1;
-                // Skip steps if target elements don't exist
+                // Skip steps if target elements don't exist or requirements not met
                 while (prevStep >= 1) {
-                    const targetId = tutorialSteps[prevStep - 1].targetId;
-                    if (document.getElementById(targetId)) {
+                    const stepData = tutorialSteps[prevStep - 1];
+                    
+                    // Check if step requires hoorverslag mode
+                    if (stepData.requiresHoorverslag && activeDocType !== 'hoorverslag') {
+                        prevStep--;
+                        continue;
+                    }
+                    
+                    // Check if target element exists, or use fallback
+                    const targetExists = document.getElementById(stepData.targetId);
+                    const fallbackExists = stepData.fallbackId ? document.getElementById(stepData.fallbackId) : false;
+                    
+                    if (targetExists || fallbackExists) {
                         setTutorialStep(prevStep);
                         return;
                     }
                     prevStep--;
                 }
                 // If no valid previous step found, stay at current step
+            };
+
+            // Function to generate hoorverslag content for Word export
+            const generateHoorverslagContent = (hoorverslagFormData, hoorverslagNumber) => {
+                try {
+                    const templateString = config.templates[activeDocType]?.[activeSubtype];
+                    if (!templateString) return '';
+
+                    let data = { ...hoorverslagFormData };
+                    const addSingleSpacingIfNeeded = (text) => text && text.trim() ? `\n${text.trim()}` : '';
+                    const addDoubleSpacingIfNeeded = (text) => text && text.trim() ? `\n\n${text.trim()}` : '';
+                    data.huidigeDatum = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                    const isVerkeersboeteSpecialCase = data.bedrijfsNaam && data.bedrijfsNaam.trim().toLowerCase() === 'verkeersboete.nl';
+                    const isSkandaraSpecialCase = data.bedrijfsNaam && data.bedrijfsNaam.trim().toLowerCase() === 'skandara';
+
+                    // Process hoorverslag specific data
+                    data.beoordelaarVolledigeNaam = `${data.beoordelaarVoorletters || ''} ${data.beoordelaarAchternaam || ''}`.trim();
+                    data.griffierVolledigeNaam = activeSubtype === 'fysiek' ? `${data.griffierVoorletters || ''} ${data.griffierAchternaam || ''}`.trim() : 'n.v.t.';
+                    data.aanwezigheidsTekst = data.aanwezigheid === 'aanwezig'
+                        ? `${data.vertegenwoordigerType === 'betrokkene' ? 'Betrokkene aanwezig:' : 'Namens betrokkene aanwezig:'} ${data.aanwezigeVoorletters || ''} ${data.aanwezigeAchternaam || ''}`.trim() + (data.bedrijfsNaam ? ` namens ${data.bedrijfsNaam}` : '')
+                        : `De ${data.vertegenwoordigerType} was niet aanwezig.`;
+
+                    // Handle standard texts based on company and category
+                    let tekstenContent = '';
+                    const selectedTexts = data.selectedStandaardTeksten || {};
+                    const selectedCat = data.selectedCategory || 'verkeersborden';
+
+                    if (isVerkeersboeteSpecialCase) {
+                        const categoryData = getCategoryCheckboxData(selectedCat, 'verkeersboete.nl');
+                        if (categoryData) {
+                            tekstenContent = Object.keys(selectedTexts)
+                                .filter(key => selectedTexts[key] && categoryData.data[key])
+                                .map(key => categoryData.data[key].tekst)
+                                .join('\n\n');
+                        }
+                    } else if (isSkandaraSpecialCase) {
+                        const categoryData = getCategoryCheckboxData(selectedCat, 'skandara');
+                        if (categoryData) {
+                            tekstenContent = Object.keys(selectedTexts)
+                                .filter(key => selectedTexts[key] && categoryData.data[key])
+                                .map(key => categoryData.data[key].tekst)
+                                .join('\n\n');
+                        }
+                    }
+
+                    data.aanvullendeGrondenSectie = tekstenContent ? `Aanvullende gronden op het beroepschrift\n${tekstenContent}` : (data.reactieVerweten ? `Aanvullende gronden op het beroepschrift\n${data.reactieVerweten.trim()}` : '');
+
+                    // Process other sections
+                    let redenContent = '';
+                    if (data.aanwezigheid === 'afwezig') {
+                        if (activeSubtype === 'telefonisch' && data.redenAfwezigheidKeuze) {
+                            const gekozenOptie = config.dropdownOptions.redenAfwezigheidOpties.find(opt => opt.value === data.redenAfwezigheidKeuze);
+                            redenContent = gekozenOptie ? gekozenOptie.label : '';
+                        } else if (data.redenNietAanwezig) {
+                            redenContent = data.redenNietAanwezig;
+                        }
+                    }
+                    data.redenNietAanwezigSectie = redenContent ? `\n\nReden geen ${data.vertegenwoordigerType} aanwezig:${addSingleSpacingIfNeeded(redenContent)}` : '';
+                    
+                    let tijdsregistratieTekst = '';
+                    if ((data.startTime && data.startTime.trim().length > 0) || (data.endTime && data.endTime.trim().length > 0)) {
+                        tijdsregistratieTekst = 'Tijdsregistratie\nDe zitting begon om ' + (data.startTime || '...') + ' en eindigde om ' + (data.endTime || '...') + '.';
+                    }
+                    
+                    let procesverloopBlok = 'De ' + data.vertegenwoordigerType + ' is op de juiste manier uitgenodigd voor de hoorzitting. De op de zaak betrekking hebbende stukken zijn ' + (data.stukkenVerstrekt === 'wel' ? 'wel' : 'niet') + ' aan de ' + data.vertegenwoordigerType + ' verstrekt voorafgaand aan de hoorzitting.';
+                    if (tijdsregistratieTekst) {
+                        procesverloopBlok += '\n\n' + tijdsregistratieTekst;
+                    }
+                    data.procesverloopTekst = procesverloopBlok;
+                    
+                    data.aanhoudingTekst = (data.aanhoudingBesluitGenomen && data.aanhouding) ? `\n\nEventueel besluit aanhoudingsverzoek/verzoek telefonische hoorzitting${addSingleSpacingIfNeeded(data.aanhouding)}` : '';
+                    
+                    let tijdigheidContent = '';
+                    const selectedTijdigheidOpt = config.dropdownOptions.tijdigheidBeroepOpties.find(opt => opt.value === data.tijdigheidBeroepType);
+                    if(selectedTijdigheidOpt){
+                       tijdigheidContent = selectedTijdigheidOpt.label;
+                    }
+
+                    if (data.tijdigheidBeroepType && data.tijdigheidBeroepType !== 'tijdigIngediend') {
+                        if (data.reactieTeLaat) {
+                            tijdigheidContent += `\nReactie m.b.t. te late indiening:\n${data.reactieTeLaat.trim()}`;
+                        }
+                    }
+                    data.tijdigheidSectie = tijdigheidContent ? `\nTijdigheid van het administratief beroep\n${tijdigheidContent}` : 'Tijdigheid van het administratief beroep\nHet beroepschrift is tijdig ingediend';
+
+                    data.vragenBeoordelaarSectie = data.vragenBeoordelaar ? `Vragen/standpunt van de beoordelaar\n${data.vragenBeoordelaar.trim()}` : '';
+                    data.reactieBetrokkeneSectie = (data.reactieOpnemen && data.reactieBetrokkene) ? `\nEventuele reactie ${data.vertegenwoordigerType}\n${data.reactieBetrokkene.trim()}` : '';
+
+                    let vervolgVragen = '';
+                    if (data.vervolgvragenGesteld) {
+                        vervolgVragen = `\nOverige vragen vanuit de beoordelaar${addSingleSpacingIfNeeded(data.overigeVragen)}`;
+                        if (data.reactieVervolgvragenOpnemen && data.reactieBetrokkene2) {
+                            vervolgVragen += `\n\nEventuele reactie ${data.vertegenwoordigerType}\n${data.reactieBetrokkene2.trim()}`;
+                        }
+                    }
+                    data.vervolgvragenSectie = vervolgVragen;
+                    data.afsprakenSectie = data.afspraken ? `\nAfspraken\n${data.afspraken.trim()}` : '';
+
+                    const afloopOptie = config.dropdownOptions.afloopZaakOpties.find(opt => opt.value === data.afloopZaakType);
+                    data.afloopZaakTekst = afloopOptie ? afloopOptie.label : '(Geen afloop geselecteerd)';
+                    if (data.afloopZaakType === 'mondelingUitspraak' && data.mondelingUitspraakTekst) {
+                        data.afloopZaakTekst += `, namelijk:\n${data.mondelingUitspraakTekst.trim()}`;
+                    }
+
+                    const compiledTemplate = Handlebars.compile(templateString);
+                    let finalDocument = compiledTemplate(data).replace(/\n{3,}/g, '\n\n').trim();
+                    finalDocument = `Aanwezigen\n${finalDocument}`;
+
+                    return finalDocument;
+                } catch (error) {
+                    console.error(`Error generating content for hoorverslag ${hoorverslagNumber}:`, error);
+                    return '';
+                }
             };
 
             // Function to get category-specific checkbox data and component
@@ -618,7 +860,14 @@
                 if (tutorialStep > 0 && tutorialStep <= tutorialSteps.length) {
                     const currentStepData = tutorialSteps[tutorialStep - 1];
                     setCurrentTutorialText(currentStepData.message);
-                    const targetElement = document.getElementById(currentStepData.targetId);
+                    
+                    // Try primary target first, then fallback
+                    let targetElement = document.getElementById(currentStepData.targetId);
+                    if (!targetElement && currentStepData.fallbackId) {
+                        targetElement = document.getElementById(currentStepData.fallbackId);
+                        console.log(`Tutorial step ${tutorialStep}: Using fallback element '${currentStepData.fallbackId}'`);
+                    }
+                    
                     if (targetElement) {
                         const rect = targetElement.getBoundingClientRect();
                         Object.assign(overlay.style, {
@@ -629,14 +878,17 @@
                             display: 'block'
                         });
                     } else {
-                        // Element not found, show message without highlight
+                        // No element found, show message without highlight
                         overlay.style.display = 'none';
-                        console.log(`Tutorial step ${tutorialStep}: Element '${currentStepData.targetId}' not found`);
+                        console.log(`Tutorial step ${tutorialStep}: Neither primary '${currentStepData.targetId}' nor fallback '${currentStepData.fallbackId}' element found`);
                         
-                        // For certain elements that might appear later, add a delay and retry
+                        // For navigation container, add a delay and retry both elements
                         if (currentStepData.targetId === 'hoorverslag-navigatie-container') {
                             setTimeout(() => {
-                                const retryElement = document.getElementById(currentStepData.targetId);
+                                let retryElement = document.getElementById(currentStepData.targetId);
+                                if (!retryElement && currentStepData.fallbackId) {
+                                    retryElement = document.getElementById(currentStepData.fallbackId);
+                                }
                                 if (retryElement) {
                                     const rect = retryElement.getBoundingClientRect();
                                     Object.assign(overlay.style, {
@@ -653,7 +905,7 @@
                 } else {
                     overlay.style.display = 'none';
                 }
-            }, [tutorialStep]);
+            }, [tutorialStep, activeDocType]);
 
             // =====================
             // 6. Render logica voor stappen
@@ -1195,7 +1447,7 @@
                             h('h2', null, 'Voorvertoning'),
                             h('div', { className: 'preview-actions' },
                                 h('button', { title: 'Kopieer naar klembord', className: 'action-button copy-button icon-only', onClick: handleCopyDocument }, h('span', {dangerouslySetInnerHTML: {__html: icons.copy}})),
-                                h('button', { title: 'Opslaan als DOCX', className: 'action-button save-button icon-only', onClick: handleSaveDocx }, h('span', {dangerouslySetInnerHTML: {__html: icons.fileWord}})),
+                                h('button', { id: 'save-docx-button', title: 'Opslaan als DOCX', className: 'action-button save-button icon-only', onClick: handleSaveDocx }, h('span', {dangerouslySetInnerHTML: {__html: icons.fileWord}})),
                                 h('button', { title: 'Opslaan & Reset', className: 'action-button reset-button icon-only', onClick: handleSaveAndReset }, h('span', {dangerouslySetInnerHTML: {__html: icons.syncAlt}})),
                                 copySuccess && h('span', { className: 'copy-success show' }, '✓ Gekopieerd!'))
                         ),
