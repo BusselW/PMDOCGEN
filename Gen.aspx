@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Generator</title>
+    
+    <!-- Inline SVG favicon for legal document generation -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='6' y='4' width='16' height='22' rx='2' fill='%232d3a8c'/%3E%3Crect x='7' y='5' width='14' height='20' fill='%23ffffff'/%3E%3Cline x1='9' y1='8' x2='19' y2='8' stroke='%23666666' stroke-width='1'/%3E%3Cline x1='9' y1='11' x2='19' y2='11' stroke='%23666666' stroke-width='1'/%3E%3Cline x1='9' y1='14' x2='16' y2='14' stroke='%23666666' stroke-width='1'/%3E%3Cpath d='M13 19l4-4 2 2-4 4-2-2z' fill='%238b5442'/%3E%3Ccircle cx='24' cy='10' r='4' fill='%2328a745'/%3E%3Cpath d='M22 10l1 1 3-3' stroke='%23ffffff' stroke-width='1.5' fill='none'/%3E%3C/svg%3E">
+    
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=JetBrains+Mono&display=swap"
         rel="stylesheet">
     <link href="styling/styling.css" rel="stylesheet">
