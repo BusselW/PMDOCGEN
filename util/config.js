@@ -76,10 +76,7 @@ export const config = {
             { number: 4, title: 'Afloop', icon: icons.flagCheckered }
         ],
         beslissing: [
-            { number: 1, title: 'Algemeen', icon: icons.infoCircle },
-            { number: 2, title: 'Details', icon: icons.listAlt },
-            { number: 3, title: 'Argumenten', icon: icons.comments },
-            { number: 4, title: 'Besluit', icon: icons.checkCircle }
+            { number: 1, title: 'Beslissing', icon: icons.checkCircle }
         ]
     },
     templates: {

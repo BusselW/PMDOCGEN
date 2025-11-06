@@ -130,6 +130,7 @@
             const [activeFormStep, setActiveFormStep] = useState(1);
             const [formData, setFormData] = useState({ ...initialFormData });
             const [copySuccess, setCopySuccess] = useState(false);
+            const [saveSuccess, setSaveSuccess] = useState(false);
             const [tooltipZichtbaar, setTooltipZichtbaar] = useState(false);
             const [taalTipZichtbaar, setTaalTipZichtbaar] = useState(false);
             const [dialoogTipZichtbaar, setDialoogTipZichtbaar] = useState(false);
@@ -159,6 +160,11 @@
             // =====================
             // HOORVERSLAG NAVIGATIE INTEGRATIE
             // =====================
+            // SAVE-ON-NAVIGATION APPROACH:
+            // - No auto-save timers to prevent timing issues
+            // - Data is saved immediately before every navigation (arrow keys, buttons, number input)
+            // - Manual save button available for explicit saves
+            // - Guarantees data integrity by eliminating race conditions
             
             // Store refs for current state values to avoid stale closures
             const selectedStandaardTekstenRef = useRef(selectedStandaardTeksten);
@@ -192,13 +198,8 @@
                                 setSelectedCategory(loadedData.selectedCategory || 'verkeersborden');
                             },
                             opOpslaan: (nummerOmOpTeSlaan) => {
-                                 // AANGEPAST: Include checkbox data when saving
-                                const dataToSave = {
-                                    ...formDataRef.current,
-                                    selectedStandaardTeksten: selectedStandaardTekstenRef.current,
-                                    selectedCategory: selectedCategoryRef.current
-                                };
-                                HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummerOmOpTeSlaan);
+                                // Save current data before switching - guaranteed save on every navigation
+                                saveCurrentData();
                             },
                             opNummersWijziging: (nieuwNummer) => {
                                 setActiveFormStep(1);
@@ -215,37 +216,54 @@
                 }
             }, [activeDocType]);
 
-            useEffect(() => {
+            // Simple save function called by navigation events or manual save
+            const saveCurrentData = (showFeedback = false) => {
                 if (activeDocType === 'hoorverslag') {
-                    const timeoutId = setTimeout(() => {
-                        // Include checkbox data and category in autosave using current ref values
-                        const dataToSave = {
-                            ...formDataRef.current,
-                            selectedStandaardTeksten: selectedStandaardTekstenRef.current,
-                            selectedCategory: selectedCategoryRef.current
-                        };
-                        
-                        // Explicitly save to the currently active hoorverslag number to avoid
-                        // potential races between the navigation module's internal number
-                        // and the React component state. Use slaSpecifiekVerslag with the
-                        // module-provided current number when available.
-                        if (typeof HoorverslagNavigatie.getHuidigNummer === 'function' && typeof HoorverslagNavigatie.slaSpecifiekVerslag === 'function') {
-                            try {
-                                const nummer = HoorverslagNavigatie.getHuidigNummer();
-                                HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummer);
-                            } catch (e) {
-                                // Fallback to generic save if anything goes wrong
-                                HoorverslagNavigatie.slaDataOp(dataToSave);
-                            }
-                        } else {
-                            HoorverslagNavigatie.slaDataOp(dataToSave);
-                        }
-                    }, 500);
+                    const dataToSave = {
+                        ...formDataRef.current,
+                        selectedStandaardTeksten: selectedStandaardTekstenRef.current,
+                        selectedCategory: selectedCategoryRef.current
+                    };
 
-                    return () => clearTimeout(timeoutId);
+                    if (typeof HoorverslagNavigatie.getHuidigNummer === 'function' && typeof HoorverslagNavigatie.slaSpecifiekVerslag === 'function') {
+                        try {
+                            const nummer = HoorverslagNavigatie.getHuidigNummer();
+                            HoorverslagNavigatie.slaSpecifiekVerslag(dataToSave, nummer);
+                            
+                            if (showFeedback) {
+                                setSaveSuccess(true);
+                                setTimeout(() => setSaveSuccess(false), 2000);
+                            }
+                        } catch (e) {
+                            HoorverslagNavigatie.slaDataOp(dataToSave);
+                            if (showFeedback) {
+                                setSaveSuccess(true);
+                                setTimeout(() => setSaveSuccess(false), 2000);
+                            }
+                        }
+                    } else {
+                        HoorverslagNavigatie.slaDataOp(dataToSave);
+                        if (showFeedback) {
+                            setSaveSuccess(true);
+                            setTimeout(() => setSaveSuccess(false), 2000);
+                        }
+                    }
                 }
-            }, [formData, activeDocType, selectedStandaardTeksten, selectedCategory]);
+            };
             
+            // Keyboard shortcut for saving (Ctrl+S)
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.ctrlKey && e.key === 's' && activeDocType === 'hoorverslag') {
+                        e.preventDefault(); // Prevent browser save dialog
+                        saveCurrentData(true);
+                    }
+                };
+
+                document.addEventListener('keydown', handleKeyDown);
+                return () => document.removeEventListener('keydown', handleKeyDown);
+            }, [activeDocType]);
+
             // =====================
             // EINDE HOORVERSLAG NAVIGATIE INTEGRATIE
             // =====================
@@ -1285,69 +1303,9 @@
                     switch (activeFormStep) {
                         case 1:
                             return h('div', { className: 'step-content-inner' },
-                                h('div', { className: 'section-header' }, h('span', null, 'Algemene Gegevens')),
+                                h('div', { className: 'section-header' }, h('span', null, 'Beslissing Template')),
                                 h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'beslissing-type-keuze' }, 'Type Beslissing:'),
-                                    h('select', { id: 'beslissing-type-keuze', value: formData.beslissingTypeKeuze, onChange: (e) => handleInputChange('beslissingTypeKeuze', e.target.value) },
-                                        config.dropdownOptions.beslissingTypeOpties.map(opt => h('option', { key: opt.value, value: opt.value }, opt.label))
-                                    )
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'geadresseerde' }, 'Geadresseerde:'),
-                                    h('input', { id: 'geadresseerde', type: 'text', value: formData.geadresseerde, placeholder: 'Naam van de geadresseerde', onChange: (e) => handleInputChange('geadresseerde', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group-row' },
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'referentieNummer' }, 'Referentienummer:'),
-                                        h('input', { id: 'referentieNummer', type: 'text', value: formData.referentieNummer, placeholder: 'bv. 12345', onChange: (e) => handleInputChange('referentieNummer', e.target.value) })
-                                    ),
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'accountNummer' }, 'Accountnummer:'),
-                                        h('input', { id: 'accountNummer', type: 'text', value: formData.accountNummer, placeholder: 'bv. ACC67890', onChange: (e) => handleInputChange('accountNummer', e.target.value) })
-                                    )
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'contactPersoon' }, 'Contactpersoon:'),
-                                    h('input', { id: 'contactPersoon', type: 'text', value: formData.contactPersoon, placeholder: 'Naam contactpersoon', onChange: (e) => handleInputChange('contactPersoon', e.target.value) })
-                                )
-                            );
-                        case 2:
-                            return h('div', { className: 'step-content-inner' },
-                                h('div', { className: 'section-header' }, h('span', null, 'Details van de Zaak')),
-                                h('div', { className: 'input-group-row' },
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'boeteNummer' }, 'Boetnummer:'),
-                                        h('input', { id: 'boeteNummer', type: 'text', value: formData.boeteNummer, placeholder: 'bv. 11.22.333.444', onChange: (e) => handleInputChange('boeteNummer', e.target.value) })
-                                    ),
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'overtredingDatum' }, 'Datum Overtreding:'),
-                                        h('input', { id: 'overtredingDatum', type: 'date', value: formData.overtredingDatum, onChange: (e) => handleInputChange('overtredingDatum', e.target.value) })
-                                    )
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'voertuigInfo' }, 'Voertuiginformatie:'),
-                                    h('input', { id: 'voertuigInfo', type: 'text', value: formData.voertuigInfo, placeholder: 'bv. Kenteken, merk, model', onChange: (e) => handleInputChange('voertuigInfo', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'overtredingType' }, 'Type Overtreding:'),
-                                    h('input', { id: 'overtredingType', type: 'text', value: formData.overtredingType, placeholder: 'bv. Snelheidsovertreding', onChange: (e) => handleInputChange('overtredingType', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group-row' },
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'clientId' }, 'Cliënt ID:'),
-                                        h('input', { id: 'clientId', type: 'text', value: formData.clientId, placeholder: 'bv. C-54321', onChange: (e) => handleInputChange('clientId', e.target.value) })
-                                    ),
-                                    h('div', { className: 'input-group' },
-                                        h('label', { htmlFor: 'serviceType' }, 'Type Service:'),
-                                        h('input', { id: 'serviceType', type: 'text', value: formData.serviceType, placeholder: 'bv. Juridisch Advies', onChange: (e) => handleInputChange('serviceType', e.target.value) })
-                                    )
-                                )
-                            );
-                        case 3:
-                            return h('div', { className: 'step-content-inner' },
-                                h('div', { className: 'section-header' }, h('span', null, 'Argumenten en Onderbouwing')),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'core-template-keuze' }, 'Core Template:'),
+                                    h('label', { htmlFor: 'core-template-keuze' }, 'Selecteer Template:'),
                                     h('select', { 
                                         id: 'core-template-keuze', 
                                         value: formData.coreTemplateKeuze, 
@@ -1357,10 +1315,6 @@
                                             h('option', { key: opt.value, value: opt.value }, opt.label)
                                         )
                                     )
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'hoofdTekst' }, 'Hoofdtekst:'),
-                                    h('textarea', { id: 'hoofdTekst', value: formData.hoofdTekst, placeholder: 'Voer de hoofdtekst van de beslissing in...', rows: 6, onChange: (e) => handleInputChange('hoofdTekst', e.target.value) })
                                 ),
 
                                 // Checkbox section for PMBS options
@@ -1379,52 +1333,11 @@
                                         }
                                     }
                                     return null;
-                                })(),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'juridischeGrondslag' }, 'Juridische Grondslag:'),
-                                    h('textarea', { id: 'juridischeGrondslag', value: formData.juridischeGrondslag, placeholder: 'Beschrijf de juridische grondslag...', rows: 4, onChange: (e) => handleInputChange('juridischeGrondslag', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'bewijslijst' }, 'Bewijslijst:'),
-                                    h('textarea', { id: 'bewijslijst', value: formData.bewijslijst, placeholder: 'Lijst van bewijsstukken...', rows: 4, onChange: (e) => handleInputChange('bewijslijst', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'aanvullendeArgumenten' }, 'Aanvullende Argumenten:'),
-                                    h('textarea', { id: 'aanvullendeArgumenten', value: formData.aanvullendeArgumenten, placeholder: 'Voer aanvullende argumenten in...', rows: 4, onChange: (e) => handleInputChange('aanvullendeArgumenten', e.target.value) })
-                                )
+                                })()
                             );
-                        case 4:
-                            return h('div', { className: 'step-content-inner' },
-                                h('div', { className: 'section-header' }, h('span', null, 'Definitief Besluit en Clausules')),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'besluitTekst' }, 'Besluit Tekst:'),
-                                    h('textarea', { id: 'besluitTekst', value: formData.besluitTekst, placeholder: 'De uiteindelijke beslissing...', rows: 5, onChange: (e) => handleInputChange('besluitTekst', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'bezwaarProcedure' }, 'Bezwaarprocedure:'),
-                                    h('textarea', { id: 'bezwaarProcedure', value: formData.bezwaarProcedure, placeholder: 'Informatie over de bezwaarprocedure...', rows: 3, onChange: (e) => handleInputChange('bezwaarProcedure', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'betalingsInformatie' }, 'Betalingsinformatie:'),
-                                    h('textarea', { id: 'betalingsInformatie', value: formData.betalingsInformatie, placeholder: 'Details over betalingen...', rows: 3, onChange: (e) => handleInputChange('betalingsInformatie', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'voorwaardenTekst' }, 'Voorwaarden:'),
-                                    h('textarea', { id: 'voorwaardenTekst', value: formData.voorwaardenTekst, placeholder: 'Algemene voorwaarden...', rows: 3, onChange: (e) => handleInputChange('voorwaardenTekst', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'disclaimerTekst' }, 'Disclaimer:'),
-                                    h('textarea', { id: 'disclaimerTekst', value: formData.disclaimerTekst, placeholder: 'Disclaimer tekst...', rows: 3, onChange: (e) => handleInputChange('disclaimerTekst', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'vertrouwelijkheidsClausule' }, 'Vertrouwelijkheidsclausule:'),
-                                    h('textarea', { id: 'vertrouwelijkheidsClausule', value: formData.vertrouwelijkheidsClausule, placeholder: 'Clausule over vertrouwelijkheid...', rows: 3, onChange: (e) => handleInputChange('vertrouwelijkheidsClausule', e.target.value) })
-                                ),
-                                h('div', { className: 'input-group' },
-                                    h('label', { htmlFor: 'handtekeningBlok' }, 'Handtekening Blok:'),
-                                    h('textarea', { id: 'handtekeningBlok', value: formData.handtekeningBlok, placeholder: 'bv. Met vriendelijke groet,\n\nNaam\nFunctie', rows: 4, onChange: (e) => handleInputChange('handtekeningBlok', e.target.value) })
-                                )
-                            );
+
+
+
                         default: return null;
                     }
                 }
@@ -1457,6 +1370,35 @@
                                 categoryOptions.map(option =>
                                     h('option', { key: option.id, value: option.id }, option.name)
                                 )
+                            )
+                        ),
+                        // Sidebar save button (only for hoorverslagen)
+                        activeDocType === 'hoorverslag' && h('div', { 
+                            className: 'sidebar-save-container', 
+                            style: { marginBottom: '16px', textAlign: 'center' } 
+                        },
+                            h('button', {
+                                className: 'sidebar-save-button',
+                                onClick: () => saveCurrentData(true),
+                                title: 'Hoorverslag opslaan (Ctrl+S)',
+                                style: {
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    backgroundColor: '#28a745',
+                                    color: 'white',
+                                    border: '1px solid #28a745',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px'
+                                }
+                            }, 
+                                h('span', { dangerouslySetInnerHTML: { __html: icons.checkCircle }, style: { fontSize: '14px' } }), 
+                                'Hoorverslag Opslaan'
                             )
                         ),
                         h('div', { id: 'document-type-toggle', className: 'theme-toggle' },
@@ -1525,6 +1467,18 @@
                                         onClick: goToPrevFormStep,
                                         disabled: activeFormStep === 1
                                     }, h('span', {dangerouslySetInnerHTML: {__html: icons.arrowLeft}}), ' Vorige'),
+                                    // Save button in navigation area (only for hoorverslagen)
+                                    activeDocType === 'hoorverslag' && h('button', {
+                                        className: 'nav-button save-nav-button',
+                                        onClick: () => saveCurrentData(true),
+                                        title: 'Hoorverslag opslaan (Ctrl+S)',
+                                        style: { 
+                                            backgroundColor: '#28a745', 
+                                            borderColor: '#28a745',
+                                            color: 'white',
+                                            margin: '0 8px'
+                                        }
+                                    }, h('span', {dangerouslySetInnerHTML: {__html: icons.checkCircle}}), ' Opslaan'),
                                     h('button', {
                                         className: 'nav-button next-button',
                                         onClick: goToNextFormStep,
@@ -1540,8 +1494,16 @@
                             h('div', { className: 'preview-actions' },
                                 h('button', { title: 'Kopieer naar klembord', className: 'action-button copy-button icon-only', onClick: handleCopyDocument }, h('span', {dangerouslySetInnerHTML: {__html: icons.copy}})),
                                 h('button', { id: 'save-docx-button', title: 'Opslaan als DOCX', className: 'action-button save-button icon-only', onClick: handleSaveDocx }, h('span', {dangerouslySetInnerHTML: {__html: icons.fileWord}})),
+                                // Show manual save button only for hoorverslagen
+                                activeDocType === 'hoorverslag' && h('button', { 
+                                    title: 'Hoorverslag Handmatig Opslaan (Ctrl+S)', 
+                                    className: 'action-button save-button icon-only', 
+                                    onClick: () => saveCurrentData(true),
+                                    style: { backgroundColor: '#28a745', borderColor: '#28a745' }
+                                 }, h('span', {dangerouslySetInnerHTML: {__html: icons.checkCircle}})),
                                 h('button', { title: 'Opslaan & Reset', className: 'action-button reset-button icon-only', onClick: handleSaveAndReset }, h('span', {dangerouslySetInnerHTML: {__html: icons.syncAlt}})),
-                                copySuccess && h('span', { className: 'copy-success show' }, '✓ Gekopieerd!'))
+                                copySuccess && h('span', { className: 'copy-success show' }, '✓ Gekopieerd!'),
+                                saveSuccess && h('span', { className: 'copy-success show', style: { backgroundColor: '#28a745' } }, '✓ Opgeslagen!'))
                         ),
                         h('div', {
                             ref: previewRef,

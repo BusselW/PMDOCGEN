@@ -138,7 +138,8 @@ const HoorverslagNavigatie = (() => {
         }
 
         if (navigatieCallbacks.opOpslaan) {
-            // Roep opOpslaan aan MET het huidige nummer VOORDAT het wordt gewijzigd
+            // SAVE-ON-NAVIGATION: Guaranteed save before switching to prevent data loss
+            // This eliminates timing issues and race conditions with auto-save
             navigatieCallbacks.opOpslaan(huidigHoorverslagNummer);
         }
         
